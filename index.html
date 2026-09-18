@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quanto custa a previsibilidade da sua obra? | Arq One</title>
+<meta name="description" content="Estimativa de investimento em projeto de arquitetura e interiores, em R$/m², apresentada antes da decisão — com o que está incluído em cada etapa.">
+<!--
+  CALCULADORA DE INVESTIMENTO · Arq One · v2 (arquitetura + interiores + marcenaria)
+  Identidade visual OFICIAL (Manual de Marca v2), compartilhada com o quiz.
+  Índices e honorários em CONFIG. CUB-SP: atualizar mensalmente (sindusconsp.com.br/servicos/cub).
+  Honorário de interiores: REFERÊNCIA DE MERCADO 2026 — substituir pela tabela da Arq One.
+  Aceita ?area=, ?escopo=arquitetura|interiores|ambos e ?marcenaria= vindos do quiz.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        marrom: '#66432F', 'marrom-hover': '#573928', 'marrom-medio': '#B0987E',
+        bege: '#E6DED3', verde: '#7F7554', 'verde-texto': '#796F50', 'verde-claro': '#E5E2CF', offwhite: '#FFFAF5'
+      },
+      fontFamily: { sans: ['"DM Sans"', 'system-ui', 'sans-serif'] },
+      borderRadius: { marca: '2px' }
+    }
+  }
+}
+</script>
+<style>
+  body { -webkit-font-smoothing: antialiased; }
+  h1[tabindex="-1"]:focus { outline: none; }
+  .screen { transition: opacity .28s ease, transform .28s ease; }
+  .screen.enter { opacity: 0; transform: translateX(28px); }
+  .screen.leave { opacity: 0; transform: translateX(-28px); pointer-events: none; }
+  .opt[aria-pressed="true"] { background: #66432F; color: #FFFAF5; border-color: #66432F; }
+  .opt:hover { background: #E6DED3; }
+  .opt[aria-pressed="true"]:hover { background: #66432F; }
+  .opt[aria-pressed="true"] .sub { color: #E6DED3; }
+  #bar { transition: width .45s cubic-bezier(.2,.7,.2,1); }
+  input[type=range] { -webkit-appearance: none; width: 100%; height: 2px; background: #E6DED3; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; background: #66432F; border: 0; border-radius: 2px; cursor: pointer; }
+  input[type=range]::-moz-range-thumb { width: 28px; height: 28px; background: #66432F; border: 0; border-radius: 2px; cursor: pointer; }
+  input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2.5px solid #7F7554; outline-offset: 3px; }
+  .motif { position: absolute; right: -60px; bottom: -40px; width: min(52vw, 420px); opacity: .5; pointer-events: none; }
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  .inc li { position: relative; padding-left: 22px; }
+  .inc li::before { content: ""; position: absolute; left: 0; top: .72em; width: 10px; height: 1px; background: #B0987E; }
+  @media (prefers-reduced-motion: reduce) { .screen, #bar { transition: none !important; } }
+</style>
+</head>
+<body class="bg-offwhite text-marrom font-sans min-h-screen flex flex-col">
+
+<header class="border-b border-marrom/15">
+  <div class="max-w-[720px] mx-auto px-[8vw] sm:px-8 py-4 flex items-center justify-between gap-4">
+    <!-- LOGOTIPO: substituir pelo vetor oficial (Var. 1, sem descritivo), sempre em campo sólido -->
+    <a href="https://arqone.com.br/" class="text-[15px] font-medium tracking-[.08em] no-underline">ARQ ONE <span class="text-marrom-medio tracking-[.02em] hidden sm:inline">· arquitetura e interiores</span></a>
+    <span id="step-label" class="text-[11px] font-semibold tracking-[.16em] uppercase text-verde-texto" aria-live="polite"></span>
+  </div>
+  <div class="h-[2px] bg-bege"><div id="bar" class="h-full bg-marrom w-0" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Progresso da estimativa"></div></div>
+</header>
+
+<main class="flex-1 relative overflow-hidden">
+  <div id="stage" class="max-w-[720px] mx-auto px-[8vw] sm:px-8 py-10 sm:py-16"></div>
+</main>
+
+<footer class="border-t border-marrom/15">
+  <div class="max-w-[720px] mx-auto px-[8vw] sm:px-8 py-4 text-[14px] text-verde-texto flex flex-wrap gap-x-4 gap-y-1">
+    <span>Arq One · Arquitetura e Interiores · Rio Preto (SP)</span>
+    <a class="underline" href="https://wa.me/5517996799933" rel="noopener">Falar com um arquiteto</a>
+  </div>
+</footer>
+
+<script>
+/* ============================ CONFIGURAÇÃO ============================ */
+const CONFIG = {
+  WHATSAPP: '5517996799933',
+  WEBHOOK_URL: '',                       // URL do CRM/webhook (POST JSON). Vazio = não envia.
+  QUIZ_URL: 'https://arqone-quiz.vercel.app/',
+  // CUB-SP — residência unifamiliar (R1), Sinduscon-SP. Atualizar todo mês: https://sindusconsp.com.br/servicos/cub/
+  CUB: {
+    medio: { valor: 2609.74, categoria: 'R1-N', nome: 'Padrão médio', sub: 'acabamento normal' },
+    alto:  { valor: 3160.94, categoria: 'R1-A', nome: 'Padrão alto',  sub: 'acabamento superior' }
+  },
+  CUB_REF: 'maio/2026',
+  CUB_FONTE: 'CUB-SP, residência unifamiliar (R1), Sinduscon-SP',
+  // Honorário de projeto de arquitetura residencial — Tabela CAU 2026 (7–10% do custo da obra, em R$/m² nos documentos de fundação)
+  ARQ: { min: 175, max: 245, fonte: 'Tabela de honorários CAU 2026' },
+  // Honorário de projeto de interiores — REFERÊNCIA DE MERCADO 2026 (projeto de interiores detalhado, com executivo). SUBSTITUIR pela tabela da Arq One.
+  INT: { min: 100, max: 150, fonte: 'referência de mercado 2026 para projeto de interiores detalhado', pendente: true },
+  AREA: { min: 60, max: 600, step: 10, start: 200 }
+};
+
+// Imagens (geradas no Higgsfield, 18/09/2026). Para hospedar localmente: salvar em img/ e trocar as URLs.
+const IMG = { intro: 'https://d8j0ntlcm91z4.cloudfront.net/user_3CN35dCKtHlDVKZnVwwQzE0vtcz/hf_20260918_183148_8263f067-5641-4fcc-b746-fae75bde3efb.png', fachada: 'https://d8j0ntlcm91z4.cloudfront.net/user_3CN35dCKtHlDVKZnVwwQzE0vtcz/hf_20260918_183149_585094ee-cc17-4fb6-bb27-daf0060a5bbd.png', cozinha: 'https://d8j0ntlcm91z4.cloudfront.net/user_3CN35dCKtHlDVKZnVwwQzE0vtcz/hf_20260918_183149_2799d377-3632-45cf-93af-baa7136a45ac.png' };
+
+/* ============================ ESTADO ============================ */
+const S = { escopo: null, tipo: null, area: null, padrao: null, marcenaria: null, nome: '', whats: '' };
+const P = new URLSearchParams(location.search);
+if (P.get('area')) { const a = Number(P.get('area')); if (a >= CONFIG.AREA.min) S.area = Math.min(a, CONFIG.AREA.max); }
+if (['arquitetura', 'interiores', 'ambos'].includes(P.get('escopo'))) S.escopo = P.get('escopo');
+if (['contratada', 'orcando', 'naoainda', 'sem'].includes(P.get('marcenaria'))) S.marcenaria = P.get('marcenaria');
+
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const BRL2 = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+const PCT = n => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hasArq = () => S.escopo !== 'interiores';
+const hasInt = () => S.escopo !== 'arquitetura';
+
+function calc() {
+  const a = S.area;
+  const r = { arqMin: 0, arqMax: 0, intMin: 0, intMax: 0, obra: null, cub: null };
+  if (hasArq()) { r.arqMin = a * CONFIG.ARQ.min; r.arqMax = a * CONFIG.ARQ.max; r.cub = CONFIG.CUB[S.padrao || 'medio'].valor; r.obra = a * r.cub; }
+  if (hasInt()) { r.intMin = a * CONFIG.INT.min; r.intMax = a * CONFIG.INT.max; }
+  r.totMin = r.arqMin + r.intMin; r.totMax = r.arqMax + r.intMax;
+  if (r.obra) { r.pctMin = r.totMin / r.obra * 100; r.pctMax = r.totMax / r.obra * 100; r.improvisoPct = r.arqMin / r.obra * 100; r.improvisoVal = r.arqMin; r.protegido = 100 - r.pctMax; }
+  return r;
+}
+
+/* ============================ TELAS ============================ */
+const SCREENS = [
+  { id: 'intro', type: 'intro' },
+  { id: 'escopo', type: 'choice', key: 'escopo', q: true,
+    title: 'O que você quer estimar?',
+    help: 'Interiores inclui layout, iluminação, revestimentos e marcenaria sob medida.',
+    options: [
+      { id: 'arquitetura', label: 'Projeto de arquitetura', sub: 'a casa: implantação, plantas, fachada, executivo' },
+      { id: 'interiores',  label: 'Projeto de interiores',  sub: 'os ambientes: layout, marcenaria, iluminação, acabamentos' },
+      { id: 'ambos',       label: 'Os dois, integrados',    sub: 'casa e interiores decididos na mesma sequência' }
+    ] },
+  { id: 'tipo', type: 'choice', key: 'tipo', q: true,
+    title: () => hasArq() ? 'Que tipo de obra é a sua?' : 'Onde os interiores vão acontecer?',
+    help: () => hasArq() ? 'Muda a leitura técnica do começo — terreno ou casa existente.' : 'Muda o que precisa ser medido antes de qualquer decisão.',
+    options: () => hasArq()
+      ? [{ id: 'nova', label: 'Residência nova', sub: 'lote ou terreno, obra do zero' }, { id: 'reforma', label: 'Reforma ou ampliação', sub: 'casa existente' }]
+      : [{ id: 'apto', label: 'Apartamento entregue', sub: 'planta da construtora, sem marcenaria' }, { id: 'casa', label: 'Casa existente', sub: 'ambientes para reformar' }] },
+  { id: 'area', type: 'slider', q: true },
+  { id: 'padrao', type: 'choice', key: 'padrao', q: true, show: hasArq,
+    title: 'Qual padrão de acabamento você tem em mente?',
+    help: 'Muda o custo por metro quadrado da obra — e, por isso, o que o projeto representa dentro dela.',
+    options: [{ id: 'medio', label: CONFIG.CUB.medio.nome, sub: CONFIG.CUB.medio.sub }, { id: 'alto', label: CONFIG.CUB.alto.nome, sub: CONFIG.CUB.alto.sub }] },
+  { id: 'marcenaria', type: 'choice', key: 'marcenaria', q: true, show: hasInt,
+    title: 'A marcenaria sob medida já está contratada?',
+    help: 'Não muda o valor do projeto. Muda o que entra primeiro no seu caderno executivo.',
+    options: [
+      { id: 'contratada', label: 'Já contratei', sub: 'projeto de fábrica fechado ou em produção' },
+      { id: 'orcando',    label: 'Já orcei, ainda não fechei' },
+      { id: 'naoainda',   label: 'Ainda não' },
+      { id: 'sem',        label: 'Não vou precisar de marcenaria sob medida' }
+    ] },
+  { id: 'result', type: 'result' }
+];
+let idx = 0;
+const stage = document.getElementById('stage'), bar = document.getElementById('bar'), stepLabel = document.getElementById('step-label');
+const val = v => typeof v === 'function' ? v() : v;
+const visible = () => SCREENS.filter(s => !s.show || s.show());
+function h(str) { return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const btnCls = 'inline-block bg-marrom hover:bg-marrom-hover text-offwhite px-7 py-[15px] text-[16px] font-medium rounded-marca transition-colors min-h-[48px] focus-visible:outline focus-visible:outline-[2.5px] focus-visible:outline-offset-[3px] focus-visible:outline-verde';
+const ghostCls = 'inline-block border border-marrom text-marrom hover:bg-bege px-7 py-[15px] text-[16px] font-medium rounded-marca transition-colors min-h-[48px] focus-visible:outline focus-visible:outline-[2.5px] focus-visible:outline-offset-[3px] focus-visible:outline-verde';
+const btn = (label, cls = btnCls) => `<button type="button" class="js-next ${cls}">${h(label)}</button>`;
+const kicker = t => `<p class="text-[11px] font-semibold tracking-[.16em] uppercase text-verde-texto mb-4">${h(t)}</p>`;
+const title  = t => `<h1 class="text-[28px] sm:text-[34px] leading-[1.14] tracking-[-.012em] font-normal max-w-[24ch] mb-3">${h(t)}</h1>`;
+const help   = t => t ? `<p class="text-[16px] leading-[1.55] text-verde-texto max-w-[52ch] mb-8">${h(t)}</p>` : '<div class="mb-8"></div>';
+const motif  = () => `<svg class="motif" viewBox="0 0 400 420" aria-hidden="true" focusable="false"><g fill="none" stroke="#7F7554" stroke-width="1.2"><path d="M60 400 L60 120 A140 140 0 0 1 200 -20"/><path d="M140 400 L140 200 A60 60 0 0 1 200 140"/><path d="M220 400 L220 260 A140 140 0 0 1 360 120"/></g></svg>`;
+
+function render(s) {
+  switch (s.type) {
+    case 'intro': return `
+      ${kicker('Cuidamos do seu bolso')}
+      ${title('Quanto custa a previsibilidade da sua obra?')}
+      <img src="${IMG.intro}" alt="Mesa de projeto com plantas impressas e amostras de materiais" class="w-full aspect-[16/9] object-cover rounded-marca my-8" loading="eager">
+      <p class="text-[18px] leading-[1.55] text-verde-texto max-w-[52ch] mb-4">Até cinco perguntas e você sai com uma estimativa de investimento em projeto — casa, interiores ou os dois — em R$/m², e com a lista do que está incluído.</p>
+      <p class="text-[16px] leading-[1.55] max-w-[52ch] mb-10">Aqui é regra: o investimento aparece antes da decisão, não depois da fundação.</p>
+      ${btn('Começar')}
+      <p class="text-[13px] text-verde-texto mt-6">Base: ${h(CONFIG.CUB_FONTE)}, ${h(CONFIG.CUB_REF)} · ${h(CONFIG.ARQ.fonte)} · ${h(CONFIG.INT.fonte)}.</p>`;
+
+    case 'choice': return `
+      ${title(val(s.title))}${help(val(s.help))}
+      <div class="grid gap-3" role="group" aria-label="${h(val(s.title))}">
+        ${val(s.options).map(o => `<button type="button" class="opt js-opt text-left w-full min-h-[56px] px-5 py-4 border border-marrom/30 rounded-marca transition-colors focus-visible:outline focus-visible:outline-[2.5px] focus-visible:outline-offset-[3px] focus-visible:outline-verde" data-id="${h(o.id)}" aria-pressed="${S[s.key] === o.id}">
+          <span class="block text-[17px] leading-snug">${h(o.label)}</span>${o.sub ? `<span class="sub block text-[14px] text-verde-texto mt-1">${h(o.sub)}</span>` : ''}
+        </button>`).join('')}
+      </div>`;
+
+    case 'slider': {
+      const v = S.area ?? CONFIG.AREA.start;
+      return `
+      ${title(hasArq() ? 'Qual é a área aproximada da obra?' : 'Qual é a área aproximada dos ambientes?')}
+      ${help(hasArq() ? 'Área construída ou a construir. Uma estimativa basta — a gente refina o número na Sessão de Viabilidade, com o terreno na mesa.' : 'Some os ambientes que entram no projeto. Uma estimativa basta — medir tudo direito é a nossa primeira entrega.')}
+      <div class="border border-marrom/30 rounded-marca p-6 mb-8">
+        <div class="flex items-baseline gap-2 mb-6"><output id="area-out" class="text-[56px] sm:text-[64px] font-light leading-none tracking-[-.028em] tabular-nums">${v}</output><span class="text-[18px] text-verde-texto">m²</span></div>
+        <input id="area" type="range" min="${CONFIG.AREA.min}" max="${CONFIG.AREA.max}" step="${CONFIG.AREA.step}" value="${v}" aria-label="Área aproximada em metros quadrados">
+        <div class="flex justify-between text-[13px] text-verde-texto mt-3 tabular-nums"><span>${CONFIG.AREA.min} m²</span><span>${CONFIG.AREA.max} m²+</span></div>
+      </div>
+      ${btn('Avançar')}`;
+    }
+
+    case 'result': return renderResult();
+  }
+}
+
+/* ============================ RESULTADO ============================ */
+const INCLUI = {
+  arquitetura: [
+    'Psicobriefing e Briefing de Rotina — a casa começa pelo uso, não pelo desenho',
+    'Leitura técnica do terreno (VisionLand): recuos, taxa de ocupação, restrições da prefeitura',
+    'Estudo do uso: croquis e layouts funcionais validados com você contra a rotina real',
+    'Visualização 3D (Presence e Harmonize) para decidir na tela, onde errar custa zero',
+    'Projeto executivo compatibilizado em BIM/CAD — elétrica, hidráulica e estrutura resolvidas no arquivo',
+    'Memorial Estimativo Orçamentário em R$/m², apresentado antes do fechamento',
+    'Kick-off com quem vai executar, Guia da Jornada e cronograma'
+  ],
+  interiores: [
+    'Briefing de Rotina e levantamento métrico dos ambientes',
+    'Layout e fluxos de circulação validados com você',
+    'Iluminação e pontos elétricos definidos junto com o layout — antes da marcenaria',
+    'Marcenaria detalhada e compatibilizada: projeto de fábrica conferido antes do corte',
+    'Paginação de revestimentos, louças, metais e bancadas',
+    'Visualização 3D e questionário de preferências estéticas',
+    'Caderno executivo de interiores + memorial estimativo de marcenaria e acabamentos'
+  ]
+};
+const MARC = {
+  contratada: 'Marcenaria já contratada: cruzamos o projeto de fábrica com elétrica, hidráulica e eletrodomésticos antes do corte, e a medição final só acontece com piso e forro prontos. O que já foi feito não se perde — se compatibiliza.',
+  orcando:    'Marcenaria em orçamento: segure o fechamento. O marceneiro vai orçar o desenho pronto, com pontos elétricos e eletrodomésticos já posicionados — o orçamento deixa de mudar.',
+  naoainda:   'Marcenaria ainda não contratada: é a ordem certa. Ela é definida dentro do projeto, junto com elétrica e eletrodomésticos, e medida só quando piso e forro estiverem prontos.',
+  sem:        'Sem marcenaria sob medida, o peso do projeto vai para layout, iluminação e revestimentos — as três decisões que mais mudam a rotina da casa.'
+};
+
+function renderResult() {
+  const r = calc();
+  const escopoLabel = { arquitetura: 'Arquitetura', interiores: 'Interiores', ambos: 'Arquitetura + interiores' }[S.escopo];
+  const cubInfo = hasArq() ? CONFIG.CUB[S.padrao || 'medio'] : null;
+  const money = (v, i) => `<span class="text-[40px] sm:text-[56px] font-light leading-none tracking-[-.028em] tabular-nums js-count" data-to="${v}" data-i="${i}">R$ 0</span>`;
+  const inc = [...(hasArq() ? INCLUI.arquitetura : []), ...(hasInt() ? INCLUI.interiores : [])];
+
+  return `
+    <div class="-mx-[8vw] sm:-mx-8 border border-marrom/15 rounded-marca overflow-hidden bg-offwhite mb-10">
+      <img src="${hasArq() ? IMG.fachada : IMG.cozinha}" alt="" class="w-full aspect-[16/9] object-cover" loading="eager">
+      <div class="px-[8vw] sm:px-8 py-10 sm:py-12">
+        ${kicker('Investimento estimado em projeto')}
+        <p class="text-[13px] font-semibold tracking-[.08em] uppercase text-verde-texto mb-2">${h(escopoLabel)} · ${S.area} m²${cubInfo ? ' · ' + h(cubInfo.nome) : ''}</p>
+        <div class="flex flex-wrap items-baseline gap-x-3 mb-1">${money(r.totMin, 0)}<span class="text-[22px] font-light text-verde-texto">a</span>${money(r.totMax, 1)}</div>
+        <p class="text-[15px] text-verde-texto mb-8">${hasArq() ? `Arquitetura: R$ ${CONFIG.ARQ.min}–${CONFIG.ARQ.max}/m² (${h(CONFIG.ARQ.fonte)})` : ''}${hasArq() && hasInt() ? ' · ' : ''}${hasInt() ? `Interiores: R$ ${CONFIG.INT.min}–${CONFIG.INT.max}/m² (${h(CONFIG.INT.fonte)})` : ''}</p>
+
+        <div class="grid sm:grid-cols-2 gap-px bg-marrom/20 border border-marrom/20 rounded-marca overflow-hidden mb-6">
+          ${hasArq() && hasInt() ? `
+          <div class="bg-offwhite p-5"><p class="text-[11px] font-semibold tracking-[.16em] uppercase text-verde-texto mb-2">Projeto de arquitetura</p><p class="text-[24px] font-light leading-none tracking-[-.012em] tabular-nums">${BRL.format(r.arqMin)} – ${BRL.format(r.arqMax)}</p></div>
+          <div class="bg-offwhite p-5"><p class="text-[11px] font-semibold tracking-[.16em] uppercase text-verde-texto mb-2">Projeto de interiores</p><p class="text-[24px] font-light leading-none tracking-[-.012em] tabular-nums">${BRL.format(r.intMin)} – ${BRL.format(r.intMax)}</p></div>` : ''}
+          ${hasArq() ? `
+          <div class="bg-offwhite p-5"><p class="text-[11px] font-semibold tracking-[.16em] uppercase text-verde-texto mb-2">Obra estimada</p><p class="text-[28px] font-light leading-none tracking-[-.012em] tabular-nums js-count" data-to="${r.obra}" data-i="2">R$ 0</p><p class="text-[14px] text-verde-texto mt-2">${S.area} m² × ${BRL2.format(r.cub)}/m² (${h(cubInfo.categoria)}, ${h(CONFIG.CUB_REF)})</p></div>
+          <div class="bg-offwhite p-5"><p class="text-[11px] font-semibold tracking-[.16em] uppercase text-verde-texto mb-2">O que o projeto representa</p><p class="text-[28px] font-light leading-none tracking-[-.012em] tabular-nums">${PCT(r.pctMin)} a ${PCT(r.pctMax)}</p><p class="text-[14px] text-verde-texto mt-2">da obra. Os outros ${PCT(r.protegido)} ficam protegidos por ele.</p></div>` : `
+          <div class="bg-offwhite p-5 sm:col-span-2"><p class="text-[11px] font-semibold tracking-[.16em] uppercase text-verde-texto mb-2">E a execução dos interiores?</p><p class="text-[16px] leading-[1.5]">Marcenaria, revestimentos e iluminação variam demais para caber numa calculadora sem projeto — qualquer número aqui seria chute. Por isso o memorial estimativo de interiores é entregue na Fase 2, antes de você fechar qualquer fornecedor.</p></div>`}
+        </div>
+
+        ${hasArq() ? `<p class="text-[17px] leading-[1.5] max-w-[46ch] mb-2">Basta o improviso consumir <strong class="font-medium">${PCT(r.improvisoPct)} da obra</strong> — ${BRL.format(r.improvisoVal)} — para ter custado o projeto de arquitetura inteiro.</p>
+        <p class="text-[14px] text-verde-texto max-w-[52ch]">Aritmética verificável, não estimativa de desperdício. O projeto não disputa espaço com a obra: ele protege o restante.</p>` : ''}
+      </div>
+    </div>
+
+    ${S.marcenaria ? `<div class="border-l-2 border-marrom-medio pl-5 mb-10 max-w-[56ch]"><p class="text-[11px] font-semibold tracking-[.16em] uppercase text-verde-texto mb-2">Sobre a sua marcenaria</p><p class="text-[16px] leading-[1.55]">${h(MARC[S.marcenaria])}</p></div>` : ''}
+
+    ${kicker('O que está incluído nesse valor')}
+    <ul class="inc grid gap-3 text-[16px] leading-[1.5] max-w-[60ch] mb-4">${inc.map(i => `<li>${h(i)}</li>`).join('')}</ul>
+    <p class="text-[14px] text-verde-texto max-w-[56ch] mb-10">Acompanhamento de obra (Vision Private: vistorias periódicas com relatório visual, as-built e checklist na entrega) é contratado como assessoria — o formato é combinado na Sessão de Viabilidade.</p>
+
+    <details class="mb-10 border-t border-b border-marrom/20 py-4">
+      <summary class="flex items-center justify-between text-[15px] font-medium min-h-[40px]"><span>Como esse número foi calculado</span><span aria-hidden="true" class="text-verde-texto">+</span></summary>
+      <div class="text-[15px] leading-[1.55] text-verde-texto pt-3 space-y-2 max-w-[60ch]">
+        ${hasArq() ? `<p>Obra estimada = área × custo unitário básico da construção paulista para residência unifamiliar (${h(CONFIG.CUB_FONTE)}, ${h(CONFIG.CUB_REF)}): ${h(cubInfo.categoria)} = ${BRL2.format(r.cub)}/m².</p><p>Projeto de arquitetura = área × R$ ${CONFIG.ARQ.min} a R$ ${CONFIG.ARQ.max}/m² (${h(CONFIG.ARQ.fonte)}, projeto residencial unifamiliar).</p>` : ''}
+        ${hasInt() ? `<p>Projeto de interiores = área × R$ ${CONFIG.INT.min} a R$ ${CONFIG.INT.max}/m² (${h(CONFIG.INT.fonte)}). ${CONFIG.INT.pendente ? 'A Arq One confirma a faixa para o seu caso na Sessão de Viabilidade.' : ''}</p>` : ''}
+        ${S.tipo === 'reforma' ? '<p>Em reformas, o custo por m² varia mais do que em obra nova. O CUB entra aqui como referência; a Sessão de Viabilidade ajusta o número ao que existe na casa.</p>' : ''}
+        <p>Estimativa com base em dados públicos. O valor final é definido na Sessão de Viabilidade, com o seu terreno e o seu programa de necessidades.</p>
+      </div>
+    </details>
+
+    ${kicker('Próximo passo')}
+    <h2 class="text-[24px] sm:text-[28px] leading-[1.14] tracking-[-.012em] font-normal max-w-[24ch] mb-3">Quer esse número mais preciso, com o seu ${hasArq() ? 'terreno' : 'apartamento'} na mesa?</h2>
+    <p class="text-[16px] leading-[1.55] text-verde-texto max-w-[52ch] mb-6">A Sessão de Viabilidade é a primeira etapa do Método VisionOne: entendimento, leitura do espaço e faixa de investimento — antes do primeiro traço.</p>
+    <form id="lead-form" class="grid gap-5 max-w-[440px]" novalidate>
+      <label class="grid gap-2"><span class="text-[13px] font-semibold tracking-[.08em] uppercase text-verde-texto">Nome</span>
+        <input id="nome" type="text" autocomplete="given-name" required minlength="2" class="min-h-[52px] px-4 bg-offwhite border border-marrom/40 rounded-marca text-[17px] focus:border-marrom focus-visible:outline focus-visible:outline-[2.5px] focus-visible:outline-offset-[3px] focus-visible:outline-verde" placeholder="Como podemos te chamar"></label>
+      <label class="grid gap-2"><span class="text-[13px] font-semibold tracking-[.08em] uppercase text-verde-texto">Melhor WhatsApp</span>
+        <input id="whats" type="tel" inputmode="tel" autocomplete="tel" required class="min-h-[52px] px-4 bg-offwhite border border-marrom/40 rounded-marca text-[17px] tabular-nums focus:border-marrom focus-visible:outline focus-visible:outline-[2.5px] focus-visible:outline-offset-[3px] focus-visible:outline-verde" placeholder="(17) 9 9999-9999"></label>
+      <p id="form-err" class="text-[14px] text-marrom min-h-[20px]" aria-live="polite"></p>
+      <div class="flex flex-wrap gap-4">
+        <button type="submit" class="${btnCls}">Agendar Sessão de Viabilidade</button>
+        <button type="button" id="btn-detalhe" class="${ghostCls}">Quero essa estimativa em detalhe</button>
+      </div>
+      <p class="text-[13px] text-verde-texto">Seus dados ficam com a equipe da Arq One, e só. Quem lê é quem vai conduzir o projeto.</p>
+    </form>
+    <p class="text-[15px] text-verde-texto mt-10 max-w-[52ch]">Ainda não sabe em que ponto da decisão a sua obra está? <a class="underline" href="${CONFIG.QUIZ_URL}">Faça o diagnóstico em três minutos.</a></p>`;
+}
+
+function renderResumo() {
+  const r = calc();
+  const esc = { arquitetura: 'Arquitetura', interiores: 'Interiores', ambos: 'Arquitetura + interiores' }[S.escopo];
+  const tipo = { nova: 'Residência nova', reforma: 'Reforma ou ampliação', apto: 'Apartamento entregue', casa: 'Casa existente' }[S.tipo] || '—';
+  const marc = { contratada: 'já contratada', orcando: 'em orçamento', naoainda: 'ainda não', sem: 'não vai ter' }[S.marcenaria];
+  return `Olá, sou ${S.nome}. Fiz a estimativa no site da Arq One.\n• Escopo: ${esc}\n• Tipo: ${tipo}\n• Área: ${S.area} m²` +
+    (hasArq() ? `\n• Padrão: ${CONFIG.CUB[S.padrao || 'medio'].nome}\n• Obra estimada: ${BRL.format(r.obra)}` : '') +
+    (marc ? `\n• Marcenaria: ${marc}` : '') +
+    `\n• Projeto: ${BRL.format(r.totMin)} a ${BRL.format(r.totMax)}`;
+}
+
+/* ============================ NAVEGAÇÃO ============================ */
+function updateChrome() {
+  const vis = visible(), s = SCREENS[idx], pos = vis.indexOf(s);
+  const pct = Math.round((pos / (vis.length - 1)) * 100);
+  bar.style.width = pct + '%'; bar.setAttribute('aria-valuenow', pct);
+  const qs = vis.filter(x => x.q), qn = qs.indexOf(s);
+  stepLabel.textContent = qn >= 0 ? `Etapa ${qn + 1} de ${qs.length}` : (s.type === 'result' ? 'Estimativa' : '');
+}
+function mount() {
+  const s = SCREENS[idx];
+  const el = document.createElement('section');
+  el.className = 'screen' + (reduceMotion ? '' : ' enter');
+  el.innerHTML = render(s);
+  stage.replaceChildren(el);
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('enter')));
+  updateChrome(); wire(el, s);
+  const f = el.querySelector('h1'); if (f) { f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); }
+  window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+}
+function next() {
+  const cur = stage.firstElementChild;
+  let n = idx + 1;
+  while (n < SCREENS.length && SCREENS[n].show && !SCREENS[n].show()) n++;
+  if (!cur || n >= SCREENS.length) return;
+  idx = n;
+  if (reduceMotion) return mount();
+  cur.classList.add('leave'); setTimeout(mount, 230);
+}
+function countMoney(el) {
+  const to = Number(el.dataset.to);
+  if (reduceMotion) { el.textContent = BRL.format(to); return; }
+  const t0 = performance.now(), dur = 1000;
+  (function tick(now) { const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3); el.textContent = BRL.format(to * e); if (p < 1) requestAnimationFrame(tick); })(t0);
+}
+function waLink(t) { return `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(t)}`; }
+function sendWebhook(extra) {
+  if (!CONFIG.WEBHOOK_URL) return;
+  try { const r = calc(); fetch(CONFIG.WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify({ origem: 'calculadora-arqone', enviado_em: new Date().toISOString(), ...S, obra: r.obra && Math.round(r.obra), projeto_min: Math.round(r.totMin), projeto_max: Math.round(r.totMax), cub_ref: CONFIG.CUB_REF, ...extra }) }); } catch (e) {}
+}
+function wire(el, s) {
+  el.querySelectorAll('.js-next').forEach(b => b.addEventListener('click', () => { if (s.type === 'slider') S.area = Number(el.querySelector('#area').value); next(); }));
+  if (s.type === 'choice') {
+    let locked = false;
+    el.querySelectorAll('.js-opt').forEach(o => o.addEventListener('click', () => {
+      if (locked) return; locked = true;
+      el.querySelectorAll('.js-opt').forEach(x => x.setAttribute('aria-pressed', 'false'));
+      o.setAttribute('aria-pressed', 'true'); S[s.key] = o.dataset.id; setTimeout(next, 320);
+    }));
+  }
+  if (s.type === 'slider') { const r = el.querySelector('#area'), out = el.querySelector('#area-out'); r.addEventListener('input', () => out.textContent = Number(r.value) >= CONFIG.AREA.max ? `${CONFIG.AREA.max}+` : r.value); }
+  if (s.type === 'result') {
+    el.querySelectorAll('.js-count').forEach(c => setTimeout(() => countMoney(c), 200 + Number(c.dataset.i) * 120));
+    const validate = () => {
+      const nome = el.querySelector('#nome').value.trim(), whats = el.querySelector('#whats').value.replace(/\D/g, ''), err = el.querySelector('#form-err');
+      if (nome.length < 2) { err.textContent = 'Precisamos de um nome para conduzir a conversa.'; el.querySelector('#nome').focus(); return false; }
+      if (whats.length < 10 || whats.length > 13) { err.textContent = 'Confira o WhatsApp — com DDD, por favor.'; el.querySelector('#whats').focus(); return false; }
+      err.textContent = ''; S.nome = nome; S.whats = whats; return true;
+    };
+    el.querySelector('#lead-form').addEventListener('submit', e => { e.preventDefault(); if (!validate()) return; sendWebhook({ acao: 'sessao' }); window.open(waLink(renderResumo() + '\n\nQuero agendar uma Sessão de Viabilidade.'), '_blank', 'noopener'); });
+    el.querySelector('#btn-detalhe').addEventListener('click', () => { if (!validate()) return; sendWebhook({ acao: 'detalhe' }); window.open(waLink(renderResumo() + '\n\nQuero receber essa estimativa em detalhe.'), '_blank', 'noopener'); });
+  }
+}
+document.addEventListener('keydown', e => { if (e.key !== 'Enter') return; const s = SCREENS[idx]; if (s.type === 'intro' || s.type === 'slider') { e.preventDefault(); stage.querySelector('.js-next')?.click(); } });
+mount();
+</script>
+</body>
+</html>
